@@ -122,7 +122,7 @@ class Updater(object):
             [element.coverage for element in corpus_object.corpus]
         )
         self.flann.build_index(self.lookup_array, algorithm=self.algorithm)
-        tf.logging.info("Flushing buffer and building index.")
+        tf.compat.v1.logging.info("Flushing buffer and building index.")
 
     def update_function(self, corpus_object, element):
         """Checks if coverage is new and updates corpus if so.
@@ -153,12 +153,12 @@ class Updater(object):
             ]
             nearest_distance = min(exact_distances + approx_distances.tolist())
             if nearest_distance > self.threshold:
-                tf.logging.info(
+                tf.compat.v1.logging.info(
                     "corpus_size %s mutations_processed %s",
                     len(corpus_object.corpus),
                     corpus_object.mutations_processed,
                 )
-                tf.logging.info(
+                tf.compat.v1.logging.info(
                     "coverage: %s, metadata: %s",
                     element.coverage,
                     element.metadata,
@@ -201,7 +201,7 @@ class InputCorpus(object):
         current_time = time.time()
         if current_time - self.log_time > 10:
             self.log_time = current_time
-            tf.logging.info(
+            tf.compat.v1.logging.info(
                 "mutations_per_second: %s",
                 float(self.mutations_processed)
                 / (current_time - self.start_time),

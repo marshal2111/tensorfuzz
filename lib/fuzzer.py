@@ -60,7 +60,7 @@ class Fuzzer(object):
 
         for iteration in range(iterations):
             if iteration % 100 == 0:
-                tf.logging.info("fuzzing iteration: %s", iteration)
+                tf.compat.v1.logging.info("fuzzing iteration: %s", iteration)
             parent = self.corpus.sample_input()
 
             # Get a mutated batch for each input tensor

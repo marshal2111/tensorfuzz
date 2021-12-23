@@ -1,3 +1,4 @@
+
 # Copyright 2018 Google LLC
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +22,7 @@ import random as random
 import numpy as np
 import scipy
 import tensorflow as tf
+import tensorflow_datasets as tfds
 import lib.dataset as mnist
 
 
@@ -34,24 +36,18 @@ def basic_mnist_input_corpus(choose_randomly=False, data_dir="/tmp/mnist"):
       A single image and a single label.
     """
 
-    dataset = mnist.train(data_dir)
-    dataset = dataset.cache().shuffle(buffer_size=50000).batch(100).repeat()
-    iterator = dataset.make_one_shot_iterator()
-    images, integer_labels = iterator.get_next()
-    images = tf.reshape(images, [-1, 28, 28, 1])
-    # labels = tf.one_hot(integer_labels, 10)
-    labels = integer_labels
+    (dataset, _) = tfds.load('mnist',
+                             split=['train', 'test'],
+                             shuffle_files=True,
+                             as_supervised=False,
+                             with_info=False)
 
-    with tf.train.MonitoredTrainingSession() as sess:
-        image_batch, label_batch = sess.run([images, labels])
 
-    if choose_randomly:
-        idx = random.choice(range(image_batch.shape[0]))
-    else:
-        idx = 0
-    tf.logging.info("Seeding corpus with element at idx: %s", idx)
-    return image_batch[idx], label_batch[idx]
+    examples = dataset.take(1)
+    for sample in examples:
+        image, label = sample["image"].numpy(), sample["label"].numpy()
 
+    return image, label
 
 def imsave(image, path):
     """Saves an image to a given path.
@@ -63,7 +59,7 @@ def imsave(image, path):
         path: A Filepath.
     """
     image = np.squeeze(image)
-    with tf.gfile.Open(path, mode="w") as fptr:
+    with tf.io.gfile.GFile(path, mode="w") as fptr:
         scipy.misc.imsave(fptr, image)
 
 
@@ -93,7 +89,7 @@ def build_feed_dict(input_tensors, input_batches):
     for idx in range(len(list(zip(input_tensors, input_batches)))):
         np_bsz = input_batches[idx].shape[0]
         if should_tile and np_bsz != max_tensor_bsz:
-            tf.logging.info(
+            tf.compat.v1.logging.info(
                 "Tiling feed_dict inputs due to concrete batch sizes."
             )
             this_shape = [max_tensor_bsz // np_bsz] + [
@@ -130,7 +126,7 @@ def get_tensors_from_checkpoint(sess, checkpoint_dir):
     Returns:
         The 3 lists of tensorflow tensors described above.
     """
-    potential_files = tf.gfile.ListDirectory(checkpoint_dir)
+    potential_files = tf.io.gfile.listdir(checkpoint_dir)
     meta_files = [f for f in potential_files if f.endswith(".meta")]
 
     # Sort the meta files by global step
@@ -139,16 +135,16 @@ def get_tensors_from_checkpoint(sess, checkpoint_dir):
 
     explicit_meta_path = os.path.join(checkpoint_dir, meta_file)
     explicit_checkpoint_path = explicit_meta_path[: -len(".meta")]
-    tf.logging.info("Visualizing checkpoint: %s", explicit_checkpoint_path)
+    tf.compat.v1.logging.info("Visualizing checkpoint: %s", explicit_checkpoint_path)
 
-    new_saver = tf.train.import_meta_graph(
+    new_saver = tf.compat.v1.train.import_meta_graph(
         explicit_meta_path, clear_devices=True
     )
     new_saver.restore(sess, explicit_checkpoint_path)
 
-    input_tensors = tf.get_collection("input_tensors")
-    coverage_tensors = tf.get_collection("coverage_tensors")
-    metadata_tensors = tf.get_collection("metadata_tensors")
+    input_tensors = tf.compat.v1.get_collection("input_tensors")
+    coverage_tensors = tf.compat.v1.get_collection("coverage_tensors")
+    metadata_tensors = tf.compat.v1.get_collection("metadata_tensors")
 
     tensor_map = {
         "input": input_tensors,
