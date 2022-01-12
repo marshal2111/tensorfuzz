@@ -22,22 +22,22 @@ import lib.dataset as mnist
 import tensorflow as tf
 
 
-tf.flags.DEFINE_string(
+tf.compat.v1.flags.DEFINE_string(
     "checkpoint_dir",
     "/tmp/nanfuzzer",
     "The overall dir in which we store experiments",
 )
-tf.flags.DEFINE_string(
+tf.compat.v1.flags.DEFINE_string(
     "data_dir", "/tmp/mnist", "The directory in which we store the MNIST data"
 )
-tf.flags.DEFINE_integer(
+tf.compat.v1.flags.DEFINE_integer(
     "training_steps", 35000, "Number of mini-batch gradient updates to perform"
 )
-tf.flags.DEFINE_float(
+tf.compat.v1.flags.DEFINE_float(
     "init_scale", 0.25, "Scale of weight initialization for classifier"
 )
 
-FLAGS = tf.flags.FLAGS
+FLAGS = tf.compat.v1.flags.FLAGS
 
 
 def classifier(images, init_func):

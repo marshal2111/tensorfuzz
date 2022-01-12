@@ -28,25 +28,25 @@ from lib.mutation_functions import do_basic_mutations
 from lib.sample_functions import recent_sample_function
 
 
-tf.flags.DEFINE_string(
+tf.compat.v1.flags.DEFINE_string(
     "checkpoint_dir", None, "Dir containing checkpoints of model to fuzz."
 )
-tf.flags.DEFINE_integer(
+tf.compat.v1.flags.DEFINE_integer(
     "total_inputs_to_fuzz", 100, "Loops over the whole corpus."
 )
-tf.flags.DEFINE_integer(
+tf.compat.v1.flags.DEFINE_integer(
     "mutations_per_corpus_item", 100, "Number of times to mutate corpus item."
 )
-tf.flags.DEFINE_float(
+tf.compat.v1.flags.DEFINE_float(
     "ann_threshold",
     1.0,
     "Distance below which we consider something new coverage.",
 )
-tf.flags.DEFINE_integer("seed", None, "Random seed for both python and numpy.")
-tf.flags.DEFINE_boolean(
+tf.compat.v1.flags.DEFINE_integer("seed", None, "Random seed for both python and numpy.")
+tf.compat.v1.flags.DEFINE_boolean(
     "random_seed_corpus", False, "Whether to choose a random seed corpus."
 )
-FLAGS = tf.flags.FLAGS
+FLAGS = tf.compat.v1.flags.FLAGS
 
 
 def metadata_function(metadata_batches):
