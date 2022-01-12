@@ -1,0 +1,5 @@
+docker run -it -d --rm -v $PWD:/tmp -w /tmp -e PYTHONPATH="$PYTHONPATH:$HOME/tensorfuzz" tensorflow/tensorflow:latest-gpu 
+
+docker exec -it -e PYTHONPATH="$PYTHONPATH:$HOME/tensorfuzz" musing_wright python examples_new/quantize/quantized_model.py --checkpoint_dir='/tmp/quantized_checkpoints_2' --training_steps=10000
+
+docker exec -it -e PYTHONPATH="$PYTHONPATH:$HOME/tensorfuzz" musing_wright python examples_new/quantize/quantized_fuzzer.py --checkpoint_dir=/tmp/quantized_checkpoints_2 --total_inputs_to_fuzz=1000000 --mutations_per_corpus_item=100 --output_path=/cns/ok-d/home/augustusodena/fuzzer/plots/quantized_image.png --ann_threshold=100.0 --perturbation_constraint=1.0
