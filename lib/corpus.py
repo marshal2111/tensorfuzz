@@ -28,7 +28,7 @@ _BUFFER_SIZE = 50
 class CorpusElement(object):
     """Class representing a single element of a corpus."""
 
-    def __init__(self, data, metadata, coverage, parent):
+    def __init__(self, data, coverage, parent):
         """Inits the object.
 
         Args:
@@ -43,7 +43,7 @@ class CorpusElement(object):
           Initialized object.
         """
         self.data = data
-        self.metadata = metadata
+        #self.metadata = metadata
         self.parent = parent
         self.coverage = coverage
 
@@ -58,7 +58,7 @@ class CorpusElement(object):
 
 
 def seed_corpus_from_numpy_arrays(
-    numpy_arrays, coverage_function, metadata_function, fetch_function
+    numpy_arrays, coverage_function, metadata_function, model
 ):
     """Constructs a seed_corpus given numpy_arrays.
 
@@ -76,15 +76,10 @@ def seed_corpus_from_numpy_arrays(
       List of CorpusElements.
     """
     seed_corpus = []
-    for input_array_list in numpy_arrays:
-        input_batches = []
-        for input_array in input_array_list:
-            input_batches.append(np.expand_dims(input_array, axis=0))
-        coverage_batches, metadata_batches = fetch_function(input_batches)
-        coverage_list = coverage_function(coverage_batches)
-        metadata_list = metadata_function(metadata_batches)
+    for input_array in numpy_arrays:
+        coverage = model.predict(input_array)
         new_element = CorpusElement(
-            input_array_list, metadata_list[0], coverage_list[0], None
+            input_array[0], coverage[0], None
         )
         seed_corpus.append(new_element)
     return seed_corpus
@@ -122,7 +117,7 @@ class Updater(object):
             [element.coverage for element in corpus_object.corpus]
         )
         self.flann.build_index(self.lookup_array, algorithm=self.algorithm)
-        tf.compat.v1.logging.info("Flushing buffer and building index.")
+        # tf.compat.v1.logging.info("Flushing buffer and building index.")
 
     def update_function(self, corpus_object, element):
         """Checks if coverage is new and updates corpus if so.
@@ -145,7 +140,7 @@ class Updater(object):
             self.build_index_and_flush_buffer(corpus_object)
         else:
             _, approx_distances = self.flann.nn_index(
-                np.array([element.coverage]), 1, algorithm=self.algorithm
+                np.array(element.coverage), 1, algorithm=self.algorithm
             )
             exact_distances = [
                 np.sum(np.square(element.coverage - buffer_elt))
@@ -153,16 +148,17 @@ class Updater(object):
             ]
             nearest_distance = min(exact_distances + approx_distances.tolist())
             if nearest_distance > self.threshold:
-                tf.compat.v1.logging.info(
-                    "corpus_size %s mutations_processed %s",
-                    len(corpus_object.corpus),
-                    corpus_object.mutations_processed,
-                )
-                tf.compat.v1.logging.info(
-                    "coverage: %s, metadata: %s",
-                    element.coverage,
-                    element.metadata,
-                )
+                # tf.compat.v1.logging.info(
+                #     "corpus_size %s mutations_processed %s",
+                #     len(corpus_object.corpus),
+                #     corpus_object.mutations_processed,
+                # )
+                # tf.compat.v1.logging.info(
+                #     #"coverage: %s, metadata: %s",
+                #     "coverage: %s",
+                #     element.coverage,
+                #     #element.metadata,
+                # )
                 corpus_object.corpus.append(element)
                 self.corpus_buffer.append(element.coverage)
                 if len(self.corpus_buffer) >= _BUFFER_SIZE:
@@ -194,12 +190,15 @@ class InputCorpus(object):
         for corpus_element in seed_corpus:
             self.maybe_add_to_corpus(corpus_element)
 
+        # for element in self.corpus:
+        #     print(element.data.shape, element.coverage)
+
     def maybe_add_to_corpus(self, element):
         """Adds item to corpus if it exercises new coverage."""
         self.updater.update_function(self, element)
         self.mutations_processed += 1
         current_time = time.time()
-        if current_time - self.log_time > 10:
+        if current_time - self.log_time > 5:
             self.log_time = current_time
             tf.compat.v1.logging.info(
                 "mutations_per_second: %s",

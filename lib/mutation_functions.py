@@ -40,28 +40,38 @@ def do_basic_mutations(
   """
     # Here we assume the corpus.data is of the form (image, label)
     # We never mutate the label.
-    if len(corpus_element.data) > 1:
-        image, label = corpus_element.data
-        image_batch = np.tile(image, [mutations_count, 1, 1, 1])
-    else:
-        image = corpus_element.data[0]
-        image_batch = np.tile(image, [mutations_count] + list(image.shape))
+    # print("ELEMENT_SIZE ", len(corpus_element.data))
+    # if len(corpus_element.data) > 1:
+    #     image, label = corpus_element.data
+    #     image_batch = np.tile(image, [mutations_count, 1, 1, 1])
+    #     #print("IMAGE_BATCH_SIZE ", image_batch.shape)
+    # else:
+    #     image = corpus_element.data[0]
+    #     image_batch = np.tile(image, [mutations_count] + list(image.shape))
+    #     print("IMAGE_BATCH_SIZE ", image_batch.shape)
+    #print(corpus_element.data.shape, corpus_element.coverage)
+
+    image = corpus_element.data
+    # image_batch = np.tile(image, [mutations_count, 1, 1, 1])
+    shape = np.append(np.array(mutations_count), np.ones(image.ndim, dtype=np.int8))
+    image_batch = np.tile(image, shape)
 
     sigma = 0.2
     noise = np.random.normal(size=image_batch.shape, scale=sigma)
+    #print("NOISE_SIZE ", noise.shape)
 
     if constraint is not None:
         # (image - original_image) is a single image. it gets broadcast into a batch
         # when added to 'noise'
         ancestor, _ = corpus_element.oldest_ancestor()
-        original_image = ancestor.data[0]
+        original_image = ancestor.data
         original_image_batch = np.tile(
-            original_image, [mutations_count, 1, 1, 1]
+            original_image, shape
         )
         cumulative_noise = noise + (image_batch - original_image_batch)
         # pylint: disable=invalid-unary-operand-type
-        noise = np.clip(cumulative_noise, a_min=-constraint, a_max=constraint)
-        mutated_image_batch = noise + original_image_batch
+        cumulative_noise = np.clip(cumulative_noise, a_min=-constraint, a_max=constraint)
+        mutated_image_batch = cumulative_noise + original_image_batch
     else:
         mutated_image_batch = noise + image_batch
 
@@ -69,9 +79,9 @@ def do_basic_mutations(
         mutated_image_batch, a_min=a_min, a_max=a_max
     )
 
-    if len(corpus_element.data) > 1:
-        label_batch = np.tile(label, [mutations_count])
-        mutated_batches = [mutated_image_batch, label_batch]
-    else:
-        mutated_batches = [mutated_image_batch]
-    return mutated_batches
+    # if len(corpus_element.data) > 1:
+    #     label_batch = np.tile(label, [mutations_count])
+    #     mutated_batches = [mutated_image_batch, label_batch]
+    # else:
+    #     mutated_batches = [mutated_image_batch]
+    return mutated_image_batch

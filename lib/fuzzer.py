@@ -28,11 +28,11 @@ class Fuzzer(object):
     def __init__(
         self,
         corpus,
+        model,
         coverage_function,
         metadata_function,
         objective_function,
         mutation_function,
-        fetch_function,
     ):
         """Init the class.
 
@@ -49,11 +49,11 @@ class Fuzzer(object):
       Initialized object.
     """
         self.corpus = corpus
+        self.model = model
         self.coverage_function = coverage_function
         self.metadata_function = metadata_function
         self.objective_function = objective_function
         self.mutation_function = mutation_function
-        self.fetch_function = fetch_function
 
     def loop(self, iterations):
         """Fuzzes a machine learning model in a loop, making *iterations* steps."""
@@ -66,24 +66,21 @@ class Fuzzer(object):
             # Get a mutated batch for each input tensor
             mutated_data_batches = self.mutation_function(parent)
 
-            # Grab the coverage and metadata for mutated batch from the TF runtime.
-            coverage_batches, metadata_batches = self.fetch_function(
-                mutated_data_batches
-            )
+            # Grab the coverage for mutated batch from the TF runtime.
+            coverage_batches = self.model.predict(mutated_data_batches)
+            # print("COVERAGE BATHES SHAPE", coverage_batches.shape)
 
-            # Get the coverage - one from each batch element
-            mutated_coverage_list = self.coverage_function(coverage_batches)
-
-            # Get the metadata objects - one from each batch element
-            mutated_metadata_list = self.metadata_function(metadata_batches)
+            # # Get the coverage - one from each batch element
+            # mutated_coverage_list = self.coverage_function(coverage_batches)
+            # print("MUTATED COV LIST SHAPE ", len(mutated_coverage_list))
 
             # Check for new coverage and create new corpus elements if necessary.
             # pylint: disable=consider-using-enumerate
-            for idx in range(len(mutated_coverage_list)):
+            for idx in range(coverage_batches.shape[0]):
                 new_element = CorpusElement(
-                    [batch[idx] for batch in mutated_data_batches],
-                    mutated_metadata_list[idx],
-                    mutated_coverage_list[idx],
+                    mutated_data_batches[idx],
+                    #[batch[idx] for batch in mutated_data_batches],
+                    coverage_batches[idx],
                     parent,
                 )
                 if self.objective_function(new_element):

@@ -43,7 +43,7 @@ def basic_mnist_input_corpus(choose_randomly=False, data_dir="/tmp/mnist"):
                              with_info=False)
 
 
-    examples = dataset.take(1)
+    examples = dataset.take(10)
     for sample in examples:
         image, label = sample["image"].numpy(), sample["label"].numpy()
 
@@ -78,32 +78,8 @@ def build_feed_dict(input_tensors, input_batches):
     Returns:
         The feed_dict described above.
     """
-    feed_dict = {}
 
-    # If the tensor has concrete shape and we are feeding in something that has a
-    # non-matching shape, we will need to tile it to make it work.
-    tensor_bszs = [x.get_shape().as_list()[0] for x in input_tensors]
-    should_tile = any([x is not None for x in tensor_bszs])
-    if should_tile:
-        max_tensor_bsz = max([x for x in tensor_bszs if x is not None])
-    for idx in range(len(list(zip(input_tensors, input_batches)))):
-        np_bsz = input_batches[idx].shape[0]
-        if should_tile and np_bsz != max_tensor_bsz:
-            tf.compat.v1.logging.info(
-                "Tiling feed_dict inputs due to concrete batch sizes."
-            )
-            this_shape = [max_tensor_bsz // np_bsz] + [
-                1 for _ in range(len(input_batches[idx].shape[1:]))
-            ]
-            input_batches[idx] = np.tile(input_batches[idx], this_shape)
-
-    # Note that this will truncate one of input_tensors or input_batches
-    # if either of them is longer. This is WAI right now, because we sometimes
-    # want to store the label for an image classifier for which we don't have
-    # a label placeholder in the checkpoint.
-    for input_tensor, input_batch in list(zip(input_tensors, input_batches)):
-        feed_dict[input_tensor] = input_batch
-    return feed_dict
+    return 0
 
 
 def get_tensors_from_checkpoint(sess, checkpoint_dir):
@@ -126,70 +102,24 @@ def get_tensors_from_checkpoint(sess, checkpoint_dir):
     Returns:
         The 3 lists of tensorflow tensors described above.
     """
-    potential_files = tf.io.gfile.listdir(checkpoint_dir)
-    meta_files = [f for f in potential_files if f.endswith(".meta")]
 
-    # Sort the meta files by global step
-    meta_files.sort(key=lambda f: int(f[: -len(".meta")].split("-")[-1]))
-    meta_file = meta_files[-1]
-
-    explicit_meta_path = os.path.join(checkpoint_dir, meta_file)
-    explicit_checkpoint_path = explicit_meta_path[: -len(".meta")]
-    tf.compat.v1.logging.info("Visualizing checkpoint: %s", explicit_checkpoint_path)
-
-    new_saver = tf.compat.v1.train.import_meta_graph(
-        explicit_meta_path, clear_devices=True
-    )
-    new_saver.restore(sess, explicit_checkpoint_path)
-
-    input_tensors = tf.compat.v1.get_collection("input_tensors")
-    coverage_tensors = tf.compat.v1.get_collection("coverage_tensors")
-    metadata_tensors = tf.compat.v1.get_collection("metadata_tensors")
-
-    tensor_map = {
-        "input": input_tensors,
-        "coverage": coverage_tensors,
-        "metadata": metadata_tensors,
-    }
-    return tensor_map
+    
+    return 0
 
 
 def fetch_function(
-    sess, input_tensors, coverage_tensors, metadata_tensors, input_batches
+    model, input_batch
 ):
     """Fetches from the TensorFlow runtime given inputs.
 
     Args:
-      sess: a TensorFlow Session object.
-      input_tensors: TF tensors to which we feed input_batches.
-      coverage_tensors: TF tensors we fetch for coverage.
-      metadata_tensors: TF tensors we fetch for metadata.
-      input_batches: numpy arrays we feed to input_tensors.
+      model: Keras Model object.
+      input_batch: numpy arrays we feed to model.
 
     Returns:
-        Coverage and metadata as lists of numpy arrays.
+        Coverage list of numpy arrays.
     """
-    feed_dict = build_feed_dict(input_tensors, input_batches)
-    fetched_data = sess.run(
-        coverage_tensors + metadata_tensors, feed_dict=feed_dict
-    )
-    idx = len(coverage_tensors)
-    coverage_batches = fetched_data[:idx]
-    metadata_batches = fetched_data[idx:]
-    return coverage_batches, metadata_batches
+    
+    coverage_batch = model.predict_on_batch(input_batch)
 
-
-def build_fetch_function(sess, tensor_map):
-    """Constructs fetch function given session and tensors."""
-
-    def func(input_batches):
-        """The fetch function."""
-        return fetch_function(
-            sess,
-            tensor_map["input"],
-            tensor_map["coverage"],
-            tensor_map["metadata"],
-            input_batches,
-        )
-
-    return func
+    return coverage_batch
